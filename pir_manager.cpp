@@ -9,7 +9,7 @@ PIRManager::PIRManager(uint8_t pirPin, uint8_t backlightPin)
 }
 
 void PIRManager::begin() {
-    pinMode(_pirPin, INPUT);
+    pinMode(_pirPin, INPUT_PULLDOWN);
     pinMode(_backlightPin, OUTPUT);
     digitalWrite(_backlightPin, LOW);
 }
