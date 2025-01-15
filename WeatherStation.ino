@@ -1,9 +1,11 @@
 #include "config.h"
+#include "pir_manager.h"
 #include "display_manager.h"
 #include "ble_manager.h"
 #include <Adafruit_AHTX0.h>
 #include <SPI.h>
 
+PIRManager pirManager(PIR_PIN, TFT_BL);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&SPI, TFT_DC, TFT_CS, TFT_RST);
 DisplayManager display(tft);
 Adafruit_AHTX0 aht;
@@ -26,6 +28,9 @@ bool initializeAHT20() {
 
 void setup() {
     Serial.begin(9600);
+
+    // pirセンサー初期化
+    pirManager.begin();
     
     // AHT20センサー初期化
     if (!initializeAHT20()) {
@@ -43,24 +48,30 @@ void setup() {
 void loop() {
     // メモリ使用状況のモニタリング
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("Largest free block: %d\n", ESP.getMaxAllocHeap());
+    Serial.printf("Minimum free heap: %d\n", ESP.getMinFreeHeap());
+
+    // PIRセンサーの状態確認
+    pirManager.update();
     
-    // センサーデータ取得
-    sensors_event_t humidity, temp;
-    aht.getEvent(&humidity, &temp);
-    
-    // BLEスキャンとデータ更新
+    // BLEスキャンとデータ更新（常時実行）
     WeatherData outdoorData = bleManager.scanForWeatherData();
     if (outdoorData.valid) {
         display.updateLastUpdateTime();
         Serial.println("外気データ更新時刻を記録しました");
     }
     
-    // ディスプレイ更新
-    display.updateDisplay(temp.temperature, 
-                         humidity.relative_humidity,
-                         outdoorData.temperature,
-                         outdoorData.humidity,
-                         outdoorData.battery_voltage);
+    // ディスプレイがアクティブな場合のみ表示更新
+    if (pirManager.isDisplayActive()) {
+        sensors_event_t humidity, temp;
+        aht.getEvent(&humidity, &temp);
+        
+        display.updateDisplay(temp.temperature, 
+                            humidity.relative_humidity,
+                            outdoorData.temperature,
+                            outdoorData.humidity,
+                            outdoorData.battery_voltage);
+    }
     
-    delay(5000);
+    delay(1000);
 }

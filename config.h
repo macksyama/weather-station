@@ -7,6 +7,11 @@
 #define TFT_CS    7
 #define TFT_DC    0
 #define TFT_RST   1
+#define TFT_BL 2  // バックライトのピン
+#define PIR_PIN 3  // PIRセンサーのピン
+
+// 人感検知後のディスプレイ表示時間(ms)
+#define DISPLAY_TIMEOUT (30000 - 2500)// time delay: 2500ms
 
 // 画面レイアウト定数
 #define TFT_WIDTH 320
