@@ -13,7 +13,6 @@ public:
     void updateDisplay(float temp, float humidity, 
                       float outdoor_temp, float outdoor_humidity,
                       float outdoor_battery_voltage, uint32_t last_ble_received);
-    void updateLastUpdateTime();
     bool isOn() const { return isDisplayOn; }
 private:
     Adafruit_ILI9341& _tft;

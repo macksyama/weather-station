@@ -40,3 +40,5 @@
 
 // スリープ時間（秒）
 const uint32_t SLEEP_DURATION_SEC = 60;
+// スキャン時間（秒）
+const uint32_t SCAN_DURATION_SEC = 60;

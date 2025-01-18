@@ -79,7 +79,7 @@ void DisplayManager::updateDisplay(float temp, float humidity,
     Serial.printf("外気温: %.1f°C\n", outdoor_temp);
     Serial.printf("外気湿度: %.1f%%\n", outdoor_humidity);
     Serial.printf("子機電圧: %.2fV\n", outdoor_battery_voltage);
-    Serial.printf("経過時間: %.0fm\n", last_ble_received/60);
+    Serial.printf("経過時間: %dm\n", (int)(last_ble_received/60));
     Serial.println("================");
 
     drawTemperatureSection(temp);
@@ -229,12 +229,8 @@ float DisplayManager::calculateDI(float temp, float humidity) {
     return 0.81 * temp + 0.01 * humidity * (0.99 * temp - 14.3) + 46.3;
 }
 
-void DisplayManager::updateLastUpdateTime() {
-    prev_update_time = millis();
-}
-
 void DisplayManager::drawElapsedTime(uint32_t last_ble_received) {
-    int elapsed_minutes = (last_ble_received) / 60;
+    int elapsed_minutes = last_ble_received / 60;
     
     if (isFirstDraw || elapsed_minutes != prev_elapsed_minutes) {
         _tft.setTextSize(OUTDOOR_TEXT_SIZE);
