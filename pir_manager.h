@@ -6,17 +6,16 @@
 
 class PIRManager {
 public:
-    PIRManager(uint8_t pirPin, uint8_t backlightPin);
+    PIRManager(gpio_num_t pirPin, gpio_num_t backlightPin);
     void begin();
     void update();
-    bool isDisplayActive() const { return displayActive; }
-
-private:
-    const uint8_t _pirPin;
-    const uint8_t _backlightPin;
-    bool displayActive;
-    unsigned long lastMotionTime;
-    
+    bool isDisplayActive();
     void activateDisplay();
     void deactivateDisplay();
+
+private:
+    gpio_num_t _pirPin;
+    gpio_num_t _backlightPin;
+    bool displayActive;
+    unsigned long lastMotionTime;
 };

@@ -5,6 +5,16 @@
 #include <Adafruit_AHTX0.h>
 #include <SPI.h>
 
+// RTCメモリによる変数定義
+RTC_DATA_ATTR struct {
+    float indoor_temp;
+    float indoor_humidity;
+    float outdoor_temp;
+    float outdoor_humidity;
+    float battery_voltage;
+    unsigned long last_update_time;
+} rtc_data = {0};
+
 PIRManager pirManager(PIR_PIN, TFT_BL);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&SPI, TFT_DC, TFT_CS, TFT_RST);
 DisplayManager display(tft);
@@ -26,15 +36,14 @@ bool initializeAHT20() {
     return false;
 }
 
-void setup() {
-    Serial.begin(9600);
-
-    // pirセンサー初期化
+void initializeDevices() {
+    // PIRセンサー初期化
     pirManager.begin();
     
     // AHT20センサー初期化
     if (!initializeAHT20()) {
-        while (1) delay(10);
+        Serial.println("AHT20初期化失敗");
+        esp_deep_sleep_start();
     }
     
     // ディスプレイ初期化
@@ -45,33 +54,121 @@ void setup() {
     bleManager.begin();
 }
 
-void loop() {
-    // メモリ使用状況のモニタリング
-    Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-    Serial.printf("Largest free block: %d\n", ESP.getMaxAllocHeap());
-    Serial.printf("Minimum free heap: %d\n", ESP.getMinFreeHeap());
+void performScheduledTask() {
+    Serial.println("定期的なBLEスキャン開始");
+    WeatherData outdoorData;
+    unsigned long startTime = millis();
+    const unsigned long SCAN_TIMEOUT = 1 * 60 * 1000; // 1 -> 10分のタイムアウト
 
-    // PIRセンサーの状態確認
-    pirManager.update();
+    while ((millis() - startTime) < SCAN_TIMEOUT) {
+        outdoorData = bleManager.scanForWeatherData();
+        if (outdoorData.valid) {
+            display.updateLastUpdateTime();
+            Serial.println("BLEデータ受信成功");
+            // 室内センサーデータ取得
+            sensors_event_t humidity, temp;
+            aht.getEvent(&humidity, &temp);
+            // データを保存
+            saveCurrentData(temp.temperature, humidity.relative_humidity, outdoorData);
+            return;
+        }
+        delay(1000); // スキャン間隔
+    }
     
-    // BLEスキャンとデータ更新（常時実行）
-    WeatherData outdoorData = bleManager.scanForWeatherData();
+    Serial.println("タイムアウト：BLEデータ受信失敗");
+}
+
+void performPIRTask() {
+    Serial.println("PIR検知による起動");
+    pirManager.activateDisplay();
+    
+    // 室内センサーデータ取得
+    sensors_event_t humidity, temp;
+    aht.getEvent(&humidity, &temp);
+    rtc_data.indoor_temp = temp.temperature;
+    rtc_data.indoor_humidity = humidity.relative_humidity;
+
+    display.updateDisplay(rtc_data.indoor_temp,
+                        rtc_data.indoor_humidity,
+                        rtc_data.outdoor_temp,
+                        rtc_data.outdoor_humidity,
+                        rtc_data.battery_voltage);
+             
+    // 表示時間待機
+    delay(DISPLAY_TIMEOUT);
+}
+
+void configureSleep() {
+    // 1minごとのタイマー割り込み設定
+    esp_sleep_enable_timer_wakeup(1 * 60 * 1000000ULL);
+    
+    // PIRセンサーによる外部割り込み設定
+    esp_deep_sleep_enable_gpio_wakeup(1 << PIR_PIN, ESP_GPIO_WAKEUP_GPIO_HIGH);
+}
+
+void powerOffDevices() {
+    // ディスプレイバックライトをOFF
+    pirManager.deactivateDisplay();
+    
+    // AHT20センサーの電源をOFF
+    digitalWrite(AHT20_POWER_PIN, LOW);
+    gpio_hold_en(AHT20_POWER_PIN);
+
+    gpio_deep_sleep_hold_en();
+}
+
+void saveCurrentData(float temp, float humidity, WeatherData& outdoorData) {
+    rtc_data.indoor_temp = temp;
+    rtc_data.indoor_humidity = humidity;
     if (outdoorData.valid) {
-        display.updateLastUpdateTime();
-        Serial.println("外気データ更新時刻を記録しました");
+        rtc_data.outdoor_temp = outdoorData.temperature;
+        rtc_data.outdoor_humidity = outdoorData.humidity;
+        rtc_data.battery_voltage = outdoorData.battery_voltage;
+        rtc_data.last_update_time = millis();
     }
+}
+
+void setup() {
+    Serial.begin(9600);
+
+    // 起動理由の確認
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+
+    gpio_deep_sleep_hold_dis();
+
+    // AHT20電源制御ピンの設定
+    gpio_hold_dis(AHT20_POWER_PIN);
+    pinMode(AHT20_POWER_PIN, OUTPUT);
+    digitalWrite(AHT20_POWER_PIN, HIGH);
+    delay(50);
+
+    // I2Cバス初期化
+    Wire.begin(SDA_PIN, SCL_PIN);
+
+    // デバイスの初期化
+    initializeDevices();
     
-    // ディスプレイがアクティブな場合のみ表示更新
-    if (pirManager.isDisplayActive()) {
-        sensors_event_t humidity, temp;
-        aht.getEvent(&humidity, &temp);
-        
-        display.updateDisplay(temp.temperature, 
-                            humidity.relative_humidity,
-                            outdoorData.temperature,
-                            outdoorData.humidity,
-                            outdoorData.battery_voltage);
+    // 定期的なBLEスキャンモード
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER) {
+        performScheduledTask();
     }
+    // PIRセンサーによる起動
+    else if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED || wakeup_reason == ESP_SLEEP_WAKEUP_GPIO) {
+        performPIRTask();
+    }
+
+    // スリープ前の処理
+    Serial.println("Power off devices");
+    powerOffDevices();
     
-    delay(1000);
+    // スリープモードの設定
+    configureSleep();
+
+    // ディープスリープ開始
+    Serial.println("Start Deep Sleep");
+    esp_deep_sleep_start();
+}
+
+void loop() {
+  // ディープスリープ使用時はloop不要
 }

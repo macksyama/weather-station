@@ -1,6 +1,6 @@
 #include "pir_manager.h"
 
-PIRManager::PIRManager(uint8_t pirPin, uint8_t backlightPin)
+PIRManager::PIRManager(gpio_num_t pirPin, gpio_num_t backlightPin)
     : _pirPin(pirPin)
     , _backlightPin(backlightPin)
     , displayActive(false)
@@ -29,6 +29,7 @@ void PIRManager::update() {
 
 void PIRManager::activateDisplay() {
     Serial.println("人を検知しました");
+    gpio_hold_dis(_backlightPin);
     digitalWrite(_backlightPin, HIGH);
     displayActive = true;
 }
@@ -36,5 +37,6 @@ void PIRManager::activateDisplay() {
 void PIRManager::deactivateDisplay() {
     Serial.println("タイムアウトによりディスプレイをオフにします");
     digitalWrite(_backlightPin, LOW);
+    gpio_hold_en(_backlightPin);
     displayActive = false;
 }
