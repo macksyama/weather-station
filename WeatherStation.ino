@@ -12,12 +12,12 @@ RTC_DATA_ATTR struct {
     float outdoor_temp;
     float outdoor_humidity;
     float battery_voltage;
-    unsigned long last_update_time;
+    uint32_t last_ble_received;  // 最後にBLEを受信してからの経過時間（秒）
 } rtc_data = {0};
 
-PIRManager pirManager(PIR_PIN, TFT_BL);
+PIRManager pirManager(PIR_PIN);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&SPI, TFT_DC, TFT_CS, TFT_RST);
-DisplayManager display(tft);
+DisplayManager display(tft, TFT_BL);
 Adafruit_AHTX0 aht;
 BLEManager bleManager;
 
@@ -58,9 +58,15 @@ void performScheduledTask() {
     Serial.println("定期的なBLEスキャン開始");
     WeatherData outdoorData;
     unsigned long startTime = millis();
-    const unsigned long SCAN_TIMEOUT = 1 * 60 * 1000; // 1 -> 10分のタイムアウト
+    const unsigned long SCAN_TIMEOUT = SLEEP_DURATION_SEC * 1000;
 
     while ((millis() - startTime) < SCAN_TIMEOUT) {
+      // PIRセンサーの状態を確認
+        if (pirManager.isMotionDetected()) {
+            performPIRTask();
+        }
+
+        // BLE scan
         outdoorData = bleManager.scanForWeatherData();
         if (outdoorData.valid) {
             display.updateLastUpdateTime();
@@ -80,7 +86,7 @@ void performScheduledTask() {
 
 void performPIRTask() {
     Serial.println("PIR検知による起動");
-    pirManager.activateDisplay();
+    display.turnOn();
     
     // 室内センサーデータ取得
     sensors_event_t humidity, temp;
@@ -92,15 +98,19 @@ void performPIRTask() {
                         rtc_data.indoor_humidity,
                         rtc_data.outdoor_temp,
                         rtc_data.outdoor_humidity,
-                        rtc_data.battery_voltage);
-             
+                        rtc_data.battery_voltage,
+                        rtc_data.last_ble_received);
     // 表示時間待機
     delay(DISPLAY_TIMEOUT);
+    display.turnOff();
 }
 
 void configureSleep() {
+    // BLE受信からの経過時間を更新
+    rtc_data.last_ble_received += SLEEP_DURATION_SEC;
+
     // 1minごとのタイマー割り込み設定
-    esp_sleep_enable_timer_wakeup(1 * 60 * 1000000ULL);
+    esp_sleep_enable_timer_wakeup(SLEEP_DURATION_SEC * 1000000ULL);
     
     // PIRセンサーによる外部割り込み設定
     esp_deep_sleep_enable_gpio_wakeup(1 << PIR_PIN, ESP_GPIO_WAKEUP_GPIO_HIGH);
@@ -108,7 +118,7 @@ void configureSleep() {
 
 void powerOffDevices() {
     // ディスプレイバックライトをOFF
-    pirManager.deactivateDisplay();
+    display.turnOff();
     
     // AHT20センサーの電源をOFF
     digitalWrite(AHT20_POWER_PIN, LOW);
@@ -124,7 +134,7 @@ void saveCurrentData(float temp, float humidity, WeatherData& outdoorData) {
         rtc_data.outdoor_temp = outdoorData.temperature;
         rtc_data.outdoor_humidity = outdoorData.humidity;
         rtc_data.battery_voltage = outdoorData.battery_voltage;
-        rtc_data.last_update_time = millis();
+        rtc_data.last_ble_received = 0;  // BLE受信時点でリセット
     }
 }
 

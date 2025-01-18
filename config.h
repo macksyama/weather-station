@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint> 
 
 // ピン定義
 #define TFT_MISO  GPIO_NUM_5
@@ -36,3 +37,6 @@
 
 // BLE設定
 #define SCAN_TIME 10
+
+// スリープ時間（秒）
+const uint32_t SLEEP_DURATION_SEC = 60;

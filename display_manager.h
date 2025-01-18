@@ -5,16 +5,20 @@
 
 class DisplayManager {
 public:
-    DisplayManager(Adafruit_ILI9341& tft);
+    DisplayManager(Adafruit_ILI9341& tft, gpio_num_t blPin);
     void begin();
+    void turnOn();
+    void turnOff();
     void drawStaticElements();
     void updateDisplay(float temp, float humidity, 
                       float outdoor_temp, float outdoor_humidity,
-                      float outdoor_battery_voltage);
+                      float outdoor_battery_voltage, uint32_t last_ble_received);
     void updateLastUpdateTime();
-    void drawElapsedTime(unsigned long current_time);
+    bool isOn() const { return isDisplayOn; }
 private:
     Adafruit_ILI9341& _tft;
+    const gpio_num_t backlightPin;
+    bool isDisplayOn;
     bool isFirstDraw;
     float prev_temp, prev_humidity, prev_di;
     float prev_outdoor_temp, prev_outdoor_humidity;
@@ -32,4 +36,5 @@ private:
     void drawOutdoorHumidity(float humidity);
     void drawOutdoorBatteryVoltage(float voltage);
     float calculateDI(float temp, float humidity);
+    void drawElapsedTime(uint32_t lastUpdateTime);
 };
