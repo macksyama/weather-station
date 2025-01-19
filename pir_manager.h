@@ -1,22 +1,14 @@
 #pragma once
 
 #include "config.h"
-#include <Arduino.h>
-#include <cstdint>
+#include "Arduino.h"
 
 class PIRManager {
 public:
-    PIRManager(uint8_t pirPin, uint8_t backlightPin);
+    PIRManager(gpio_num_t pirPin);
     void begin();
-    void update();
-    bool isDisplayActive() const { return displayActive; }
+    bool isMotionDetected();
 
 private:
-    const uint8_t _pirPin;
-    const uint8_t _backlightPin;
-    bool displayActive;
-    unsigned long lastMotionTime;
-    
-    void activateDisplay();
-    void deactivateDisplay();
+    const gpio_num_t _pirPin;
 };

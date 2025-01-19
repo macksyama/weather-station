@@ -1,15 +1,29 @@
 #include "display_manager.h"
 
-DisplayManager::DisplayManager(Adafruit_ILI9341& tft) : _tft(tft), 
-    isFirstDraw(true), prev_temp(0), prev_humidity(0), prev_di(100.0),
+DisplayManager::DisplayManager(Adafruit_ILI9341& tft, gpio_num_t blPin) : _tft(tft), 
+    isFirstDraw(true), backlightPin(blPin), isDisplayOn(false), prev_temp(0), prev_humidity(0), prev_di(100.0),
     prev_outdoor_temp(0), prev_outdoor_humidity(0), prev_outdoor_battery_voltage(0),
     prev_temp_animation_offset(255), prev_humidity_animation_offset(255),
     prev_face_index(255), prev_update_time(0), prev_elapsed_minutes(-1) {}
 
 void DisplayManager::begin() {
+    pinMode(backlightPin, OUTPUT);
+    digitalWrite(backlightPin, LOW);
     _tft.begin();
     _tft.setRotation(1);
     drawStaticElements();
+}
+
+void DisplayManager::turnOn() {
+    gpio_hold_dis(backlightPin);
+    digitalWrite(backlightPin, HIGH);
+    isDisplayOn = true;
+}
+
+void DisplayManager::turnOff() {
+    digitalWrite(backlightPin, LOW);
+    gpio_hold_en(backlightPin);
+    isDisplayOn = false;
 }
 
 void DisplayManager::drawStaticElements() {
@@ -55,7 +69,7 @@ void DisplayManager::drawStaticElements() {
 
 void DisplayManager::updateDisplay(float temp, float humidity, 
                                  float outdoor_temp, float outdoor_humidity,
-                                 float outdoor_battery_voltage) {
+                                 float outdoor_battery_voltage, uint32_t last_ble_received) {
     // シリアル出力を追加
     float di = calculateDI(temp, humidity);
     Serial.println("==== センサー値 ====");
@@ -65,6 +79,7 @@ void DisplayManager::updateDisplay(float temp, float humidity,
     Serial.printf("外気温: %.1f°C\n", outdoor_temp);
     Serial.printf("外気湿度: %.1f%%\n", outdoor_humidity);
     Serial.printf("子機電圧: %.2fV\n", outdoor_battery_voltage);
+    Serial.printf("経過時間: %dm\n", (int)(last_ble_received/60));
     Serial.println("================");
 
     drawTemperatureSection(temp);
@@ -73,7 +88,7 @@ void DisplayManager::updateDisplay(float temp, float humidity,
     drawOutdoorTemperature(outdoor_temp);
     drawOutdoorHumidity(outdoor_humidity);
     //drawOutdoorBatteryVoltage(outdoor_battery_voltage);
-    drawElapsedTime(millis());
+    drawElapsedTime(last_ble_received);
     isFirstDraw = false;
 }
 
@@ -214,12 +229,8 @@ float DisplayManager::calculateDI(float temp, float humidity) {
     return 0.81 * temp + 0.01 * humidity * (0.99 * temp - 14.3) + 46.3;
 }
 
-void DisplayManager::updateLastUpdateTime() {
-    prev_update_time = millis();
-}
-
-void DisplayManager::drawElapsedTime(unsigned long current_time) {
-    int elapsed_minutes = (current_time - prev_update_time) / 60000;
+void DisplayManager::drawElapsedTime(uint32_t last_ble_received) {
+    int elapsed_minutes = last_ble_received / 60;
     
     if (isFirstDraw || elapsed_minutes != prev_elapsed_minutes) {
         _tft.setTextSize(OUTDOOR_TEXT_SIZE);

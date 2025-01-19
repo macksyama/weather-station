@@ -1,77 +1,36 @@
-#include "config.h"
-#include "pir_manager.h"
+#include <Arduino.h>
+#include <SPI.h>
+#include <Wire.h>
+#include "aht_manager.h"
 #include "display_manager.h"
 #include "ble_manager.h"
-#include <Adafruit_AHTX0.h>
-#include <SPI.h>
+#include "pir_manager.h"
+#include "weather_station.h"
 
-PIRManager pirManager(PIR_PIN, TFT_BL);
+// グローバルオブジェクトの初期化
+PIRManager pirManager(PIR_PIN);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&SPI, TFT_DC, TFT_CS, TFT_RST);
-DisplayManager display(tft);
+DisplayManager display(tft, TFT_BL);
 Adafruit_AHTX0 aht;
+AHT20Manager ahtManager(aht, AHT20_POWER_PIN);
 BLEManager bleManager;
-
-// AHT20センサーの初期化関数
-bool initializeAHT20() {
-    int retry = 5; // 最大5回再試行
-    while (retry--) {
-        if (aht.begin()) {
-            Serial.println("AHT20の初期化完了");
-            return true;
-        }
-        Serial.println("AHT20の初期化に失敗しました。再試行中...");
-        delay(1000);
-    }
-    Serial.println("AHT20の初期化に失敗しました。プログラム停止");
-    return false;
-}
+WeatherStation station(pirManager, display, ahtManager, bleManager);
 
 void setup() {
     Serial.begin(9600);
+    
+    // AHT20への電源供給
+    ahtManager.powerOn();
+    Wire.begin(SDA_PIN, SCL_PIN);
 
-    // pirセンサー初期化
-    pirManager.begin();
+    // WeatherStationの初期化と実行
+    station.begin();
     
-    // AHT20センサー初期化
-    if (!initializeAHT20()) {
-        while (1) delay(10);
-    }
-    
-    // ディスプレイ初期化
-    SPI.begin(TFT_SCK, -1, TFT_MOSI, TFT_CS);
-    display.begin();
-    
-    // BLE初期化
-    bleManager.begin();
+    // ディープスリープ開始
+    Serial.println("Deep Sleep開始");
+    esp_deep_sleep_start();
 }
 
 void loop() {
-    // メモリ使用状況のモニタリング
-    Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-    Serial.printf("Largest free block: %d\n", ESP.getMaxAllocHeap());
-    Serial.printf("Minimum free heap: %d\n", ESP.getMinFreeHeap());
-
-    // PIRセンサーの状態確認
-    pirManager.update();
-    
-    // BLEスキャンとデータ更新（常時実行）
-    WeatherData outdoorData = bleManager.scanForWeatherData();
-    if (outdoorData.valid) {
-        display.updateLastUpdateTime();
-        Serial.println("外気データ更新時刻を記録しました");
-    }
-    
-    // ディスプレイがアクティブな場合のみ表示更新
-    if (pirManager.isDisplayActive()) {
-        sensors_event_t humidity, temp;
-        aht.getEvent(&humidity, &temp);
-        
-        display.updateDisplay(temp.temperature, 
-                            humidity.relative_humidity,
-                            outdoorData.temperature,
-                            outdoorData.humidity,
-                            outdoorData.battery_voltage);
-    }
-    
-    delay(1000);
+    // ディープスリープ使用時はloop不要
 }

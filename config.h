@@ -1,14 +1,18 @@
 #pragma once
+#include <cstdint> 
 
 // ピン定義
-#define TFT_MISO  5
-#define TFT_MOSI  6
-#define TFT_SCK   4
-#define TFT_CS    7
-#define TFT_DC    0
-#define TFT_RST   1
-#define TFT_BL 2  // バックライトのピン
-#define PIR_PIN 3  // PIRセンサーのピン
+#define TFT_MISO  GPIO_NUM_5
+#define TFT_MOSI  GPIO_NUM_6
+#define TFT_SCK   GPIO_NUM_4
+#define TFT_CS    GPIO_NUM_7
+#define TFT_DC    GPIO_NUM_0
+#define TFT_RST   GPIO_NUM_1
+#define TFT_BL GPIO_NUM_2  // バックライトのピン
+#define PIR_PIN GPIO_NUM_3  // PIRセンサーのピン
+#define SDA_PIN GPIO_NUM_8
+#define SCL_PIN GPIO_NUM_9
+#define AHT20_POWER_PIN GPIO_NUM_10 // AHT20の電源制御用GPIO
 
 // 人感検知後のディスプレイ表示時間(ms)
 #define DISPLAY_TIMEOUT (30000 - 2500)// time delay: 2500ms
@@ -33,3 +37,8 @@
 
 // BLE設定
 #define SCAN_TIME 10
+
+// スリープ時間（秒）
+const uint32_t SLEEP_DURATION_SEC = 60;
+// スキャン時間（秒）
+const uint32_t SCAN_DURATION_SEC = 60;
