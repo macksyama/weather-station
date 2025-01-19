@@ -209,14 +209,14 @@ void DisplayManager::drawDISection(float di) {
   
   // 表情が変化した場合のみアイコンを更新
   if (isFirstDraw || prev_face_index != face_index) {
-    _tft.fillRect(LEFT_WIDTH, 0, RIGHT_WIDTH, SECTION_HEIGHT, ILI9341_BLACK);
-    cImage_write(face, LEFT_WIDTH + 10, SECTION_HEIGHT);
+    _tft.fillRect(LEFT_WIDTH, (TFT_HEIGHT-face->height), face->width, face->height, ILI9341_BLACK);
+    cImage_write(face, LEFT_WIDTH, (TFT_HEIGHT-face->height));
     prev_face_index = face_index;
   }
   
   // 不快指数の値が変化した場合のみ数値を更新
   if (isFirstDraw || abs(di - prev_di) >= 0.1) {
-    _tft.fillRect(LEFT_WIDTH - 30, TFT_HEIGHT - 20, TFT_WIDTH - (LEFT_WIDTH - 30), 20, ILI9341_BLACK);
+    _tft.fillRect(TFT_WIDTH - 30, TFT_HEIGHT - 20, 30, 20, ILI9341_BLACK);
     _tft.setTextSize(2);
     _tft.setTextColor(ILI9341_WHITE);
     _tft.setCursor(TFT_WIDTH - 30, TFT_HEIGHT - 20);
@@ -235,10 +235,55 @@ void DisplayManager::drawElapsedTime(uint32_t last_ble_received) {
     if (isFirstDraw || elapsed_minutes != prev_elapsed_minutes) {
         _tft.setTextSize(OUTDOOR_TEXT_SIZE);
         _tft.setTextColor(ILI9341_CYAN);
-        _tft.fillRect(WEAHTER_SECTION_WIDTH + 50, 10, 70, 15, ILI9341_BLACK);
-        _tft.setCursor(WEAHTER_SECTION_WIDTH + 50, 10);
+        _tft.fillRect(LEFT_WIDTH - 50, 10, 50, 15, ILI9341_BLACK);
+        _tft.setCursor(LEFT_WIDTH - 50, 10);
         _tft.printf("%dm", elapsed_minutes);
         
         prev_elapsed_minutes = elapsed_minutes;
     }
+}
+
+void DisplayManager::drawWeatherSection(const WeatherAPIData& apiData) {
+  if (!apiData.valid) return;
+
+  // 天気コードが変化した場合のみアイコンを更新
+  if (isFirstDraw || apiData.weatherCode != prev_weather_code) {
+    // 天気コードに応じたアイコンを選択
+    const CImage* icon = nullptr;
+    if (apiData.weatherCode.startsWith("1")) {
+      Serial.print("weather_icon: 100\n");
+      icon = &image_weather_icon_100;
+    } else if (apiData.weatherCode.startsWith("2")) {
+      Serial.print("weather_icon: 200\n");
+      icon = &image_weather_icon_100;
+    } else if (apiData.weatherCode.startsWith("3")) {
+      Serial.print("weather_icon: 300\n");
+      icon = &image_weather_icon_100;
+    } else if (apiData.weatherCode.startsWith("4")) {
+      Serial.print("weather_icon: 400\n");
+      icon = &image_weather_icon_100;
+    }
+    
+    if (icon) {
+      _tft.fillRect(WEATHER_ICON_X, WEATHER_ICON_Y, icon->width, icon->height, ILI9341_BLACK);
+      cImage_write(icon, WEATHER_ICON_X, WEATHER_ICON_Y);
+    }
+    prev_weather_code = apiData.weatherCode;
+  }
+
+  // 降水確率が変化した場合のみ更新
+  if (isFirstDraw || 
+      prev_rain_prob_6h != apiData.rain_prob_within_6h || 
+      prev_rain_prob_12h != apiData.rain_prob_within_12h) {
+    _tft.fillRect(RAIN_PROB_X, RAIN_PROB_Y, (TFT_WIDTH - RAIN_PROB_X), 20, ILI9341_BLACK);
+    _tft.setTextSize(2);
+    _tft.setTextColor(ILI9341_WHITE);
+    _tft.setCursor(RAIN_PROB_X, RAIN_PROB_Y);
+    _tft.printf("%d%%->%d%%", 
+                apiData.rain_prob_within_6h, 
+                apiData.rain_prob_within_12h);
+    
+    prev_rain_prob_6h = apiData.rain_prob_within_6h;
+    prev_rain_prob_12h = apiData.rain_prob_within_12h;
+  }
 }

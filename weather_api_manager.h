@@ -3,10 +3,11 @@
 #include <ArduinoJson.h>
 
 struct WeatherAPIData {
-    String weather;
-    float temperature;
-    float humidity;
     bool valid;
+    String weather;
+    String weatherCode;      // 当日の天気コード
+    int rain_prob_within_6h;     // -6hの降水確率
+    int rain_prob_within_12h;    // -12hの降水確率
 };
 
 class WeatherAPIManager {

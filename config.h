@@ -20,8 +20,8 @@
 // 画面レイアウト定数
 #define TFT_WIDTH 320
 #define TFT_HEIGHT 240
-#define LEFT_WIDTH 200
-#define RIGHT_WIDTH 120
+#define LEFT_WIDTH 190
+#define RIGHT_WIDTH 130
 #define SECTION_HEIGHT 120
 
 // 外気温湿度表示用の定数

@@ -74,17 +74,6 @@ void WeatherStation::performScheduledTask() {
 void WeatherStation::performPIRTask() {
     Serial.println("PIR検知による起動");
     display.turnOn();
-    
-    // WiFi接続とAPI取得
-    if (wifi_manager.begin()) {
-        WeatherAPIData apiData = api_manager.getWeatherData();
-        if (apiData.valid) {
-            // 天気予報データの表示処理
-            //display.updateWeatherForecast(apiData);
-            Serial.println("天気予報データ表示");
-        }
-        wifi_manager.disconnect();
-    }
 
     SensorData sensor_data = aht_manager.readData();
     rtc_data.indoor_temp = sensor_data.temperature;
@@ -96,6 +85,24 @@ void WeatherStation::performPIRTask() {
                          rtc_data.outdoor_humidity,
                          rtc_data.battery_voltage,
                          rtc_data.last_ble_received);
+
+    // WiFi接続とAPI取得
+    if (wifi_manager.begin()) {
+        WeatherAPIData apiData = api_manager.getWeatherData();
+        if (apiData.valid) {
+            // 天気予報データの表示処理
+            Serial.println("=== 天気予報データ ===");
+            Serial.printf("天気予報: %s\n", apiData.weather.c_str());
+            Serial.printf("天気コード: %s\n", apiData.weatherCode.c_str());
+            Serial.printf("降水確率 0-6時間: %d%%\n", apiData.rain_prob_within_6h);
+            Serial.printf("降水確率 6-12時間: %d%%\n", apiData.rain_prob_within_12h);
+            Serial.println("==================");
+            display.drawWeatherSection(apiData);
+        } else {
+            Serial.println("天気予報データの取得に失敗しました");
+        }
+        wifi_manager.disconnect();
+    }
                          
     delay(DISPLAY_TIMEOUT);
     display.turnOff();

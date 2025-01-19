@@ -28,9 +28,15 @@ WeatherAPIData WeatherAPIManager::parseWeatherData(const String& payload) {
         for (JsonObject area : areas) {
             if (area["area"]["code"] == "130010") {
                 data.weather = area["weathers"][0].as<String>();
-                data.temperature = doc[0]["timeSeries"][2]["areas"][0]["temps"][0].as<float>();
-                data.humidity = 0; // 湿度データは別途計算が必要
                 data.valid = true;
+                // 天気コードの取得（1番目の配列の1番目のtimeSeriesの1番目のweatherCodes）
+                data.weatherCode = doc[0]["timeSeries"][0]["areas"][0]["weatherCodes"][0].as<String>();
+                // 降水確率の取得（1番目の配列の2番目のtimeSeriesの降水確率）
+                JsonArray pops = doc[0]["timeSeries"][1]["areas"][0]["pops"];
+                if (pops.size() >= 2) {
+                    data.rain_prob_within_6h = pops[0].as<int>();
+                    data.rain_prob_within_12h = pops[1].as<int>();
+                }
                 break;
             }
         }
