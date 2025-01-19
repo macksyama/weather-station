@@ -6,7 +6,7 @@ RTC_DATA_ATTR WeatherStation::RTCData WeatherStation::rtc_data;
 WeatherStation::WeatherStation(PIRManager& pir, DisplayManager& disp, 
                              AHT20Manager& aht_manager, BLEManager& ble)
     : pir_manager(pir), display(disp), aht_manager(aht_manager), 
-      ble_manager(ble) {
+      ble_manager(ble){
       }
 
 void WeatherStation::begin() {
@@ -75,6 +75,17 @@ void WeatherStation::performPIRTask() {
     Serial.println("PIR検知による起動");
     display.turnOn();
     
+    // WiFi接続とAPI取得
+    if (wifi_manager.begin()) {
+        WeatherAPIData apiData = api_manager.getWeatherData();
+        if (apiData.valid) {
+            // 天気予報データの表示処理
+            //display.updateWeatherForecast(apiData);
+            Serial.println("天気予報データ表示");
+        }
+        wifi_manager.disconnect();
+    }
+
     SensorData sensor_data = aht_manager.readData();
     rtc_data.indoor_temp = sensor_data.temperature;
     rtc_data.indoor_humidity = sensor_data.humidity;

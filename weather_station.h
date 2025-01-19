@@ -7,6 +7,9 @@
 #include "aht_manager.h"
 #include "ble_manager.h"
 #include "config.h"
+#include "wifi_manager.h"
+#include "weather_api_manager.h"
+#include "arduino_secrets.h"
 
 class WeatherStation {
 private:
@@ -24,6 +27,8 @@ private:
     DisplayManager& display;
     AHT20Manager& aht_manager;
     BLEManager& ble_manager;
+    WiFiManager wifi_manager{SECRET_SSID, SECRET_PASS};
+    WeatherAPIManager api_manager;
 
 public:
     WeatherStation(PIRManager& pir, DisplayManager& disp, 
