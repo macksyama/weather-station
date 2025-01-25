@@ -20,6 +20,7 @@ private:
         float outdoor_humidity;
         float battery_voltage;
         uint32_t last_ble_received;
+        uint32_t sleep_duration;
     };
 
     static RTC_DATA_ATTR RTCData rtc_data;

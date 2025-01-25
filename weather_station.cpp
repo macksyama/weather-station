@@ -51,6 +51,7 @@ void WeatherStation::handleWakeupReason() {
 
 void WeatherStation::performScheduledTask() {
     Serial.println("定期的なBLEスキャン開始");
+    rtc_data.sleep_duration = NORMAL_SLEEP_DURATION_SEC;
     WeatherData outdoorData;
     unsigned long startTime = millis();
     
@@ -63,16 +64,18 @@ void WeatherStation::performScheduledTask() {
         if (outdoorData.valid) {
             SensorData sensor_data = aht_manager.readData();
             saveCurrentData(sensor_data.temperature, sensor_data.humidity, outdoorData);
+            rtc_data.sleep_duration = BEACON_SLEEP_DURATION_SEC;
             return;
         }
         delay(1000);
     }
-    rtc_data.last_ble_received += (SCAN_DURATION_SEC + SLEEP_DURATION_SEC);
+    rtc_data.last_ble_received += (SCAN_DURATION_SEC + rtc_data.sleep_duration);
     Serial.println("タイムアウト：BLEデータ受信失敗");
 }
 
 void WeatherStation::performPIRTask() {
     Serial.println("PIR検知による起動");
+    rtc_data.sleep_duration = NORMAL_SLEEP_DURATION_SEC;
     display.turnOn();
 
     SensorData sensor_data = aht_manager.readData();
@@ -109,7 +112,8 @@ void WeatherStation::performPIRTask() {
 }
 
 void WeatherStation::prepareForSleep() {
-    esp_sleep_enable_timer_wakeup(SLEEP_DURATION_SEC * 1000000ULL);
+    esp_sleep_enable_timer_wakeup(rtc_data.sleep_duration * 1000000ULL);
+    Serial.printf("スリープ時間: %d秒\n", rtc_data.sleep_duration);
     esp_deep_sleep_enable_gpio_wakeup(1 << PIR_PIN, ESP_GPIO_WAKEUP_GPIO_HIGH);
     powerOffDevices();
 }

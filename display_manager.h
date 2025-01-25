@@ -31,14 +31,14 @@ private:
     int prev_elapsed_minutes;
     // 天気予報関連の変数
     String prev_weather_code;
-    int prev_rain_prob_6h;
-    int prev_rain_prob_12h;
+    int prev_rain_prob_6h = -1;
+    int prev_rain_prob_12h = -1;
     
     // 天気予報セクションの描画位置
     static const int WEATHER_ICON_X = LEFT_WIDTH + 10;
-    static const int WEATHER_ICON_Y = 10;
-    static const int RAIN_PROB_X = LEFT_WIDTH + 40;
-    static const int RAIN_PROB_Y = 100;
+    static const int WEATHER_ICON_Y = 0;
+    static const int RAIN_PROB_X = LEFT_WIDTH + 10;
+    static const int RAIN_PROB_Y = 105;
 
     void drawTemperatureSection(float temp);
     void drawHumiditySection(float humidity);
