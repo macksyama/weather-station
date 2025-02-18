@@ -27,7 +27,7 @@ void setup() {
     station.begin();
     
     // ディープスリープ開始
-    Serial.println("Deep Sleep開始");
+    Serial.println("===== Deep Sleep開始 =====");
     esp_deep_sleep_start();
 }
 

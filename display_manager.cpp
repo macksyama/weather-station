@@ -30,7 +30,7 @@ void DisplayManager::drawStaticElements() {
     _tft.fillScreen(ILI9341_BLACK);
     
     // 温度セクション
-    cImage_write(&image_temperature_icon, 10, (SECTION_HEIGHT - 96)/2);
+    cImage_write(&image_temperature_icon, 10, (SECTION_HEIGHT - 96)/2, ILI9341_WHITE);
     _tft.setTextSize(2);
     _tft.setTextColor(ILI9341_WHITE);
     _tft.setCursor(160-10, 40-5);
@@ -40,7 +40,7 @@ void DisplayManager::drawStaticElements() {
     _tft.printf("C");
 
     // 湿度セクション
-    cImage_write(&image_humidity_icon, 0, SECTION_HEIGHT + 10);
+    cImage_write(&image_humidity_icon, 0, SECTION_HEIGHT + 10, ILI9341_WHITE);
     _tft.setTextColor(ILI9341_WHITE);
     _tft.setTextSize(4);
     _tft.setCursor(160, SECTION_HEIGHT + 40);
@@ -113,8 +113,7 @@ void DisplayManager::drawTemperatureSection(float temp) {
     }
     
     if (isFirstDraw || prev_temp_animation_offset != animation_offset) {
-        cImage_writeSlide(&image_temperature_value, animation_offset, ILI9341_RED, 
-                         18, (SECTION_HEIGHT - 96)/2 + 4);
+        cImage_writeSlide(&image_temperature_value, 18, (SECTION_HEIGHT - 96)/2 + 4, ILI9341_RED, animation_offset);
         prev_temp_animation_offset = animation_offset;
     }
 }
@@ -143,8 +142,7 @@ void DisplayManager::drawHumiditySection(float humidity) {
   
   // アニメーションの値が変化した場合のみバーを更新
   if (isFirstDraw || prev_humidity_animation_offset != animation_offset) {
-    cImage_writeSlide(&image_humidity_value, animation_offset, ILI9341_BLUE, 
-                     0 + 3, (SECTION_HEIGHT + 10) + 8);
+    cImage_writeSlide(&image_humidity_value, 0 + 3, (SECTION_HEIGHT + 10) + 8, ILI9341_BLUE, animation_offset);
     prev_humidity_animation_offset = animation_offset;
   }
 }
@@ -209,20 +207,20 @@ void DisplayManager::drawDISection(float di) {
   
   // 表情が変化した場合のみアイコンを更新
   if (isFirstDraw || prev_face_index != face_index) {
-    _tft.fillRect(LEFT_WIDTH, 0, RIGHT_WIDTH, SECTION_HEIGHT, ILI9341_BLACK);
-    cImage_write(face, LEFT_WIDTH + 10, SECTION_HEIGHT);
+    _tft.fillRect(LEFT_WIDTH + 30, (TFT_HEIGHT-face->height), face->width, face->height, ILI9341_BLACK);
+    cImage_write(face, LEFT_WIDTH + 30, (TFT_HEIGHT-face->height), ILI9341_WHITE);
     prev_face_index = face_index;
   }
   
   // 不快指数の値が変化した場合のみ数値を更新
-  if (isFirstDraw || abs(di - prev_di) >= 0.1) {
-    _tft.fillRect(LEFT_WIDTH - 30, TFT_HEIGHT - 20, TFT_WIDTH - (LEFT_WIDTH - 30), 20, ILI9341_BLACK);
-    _tft.setTextSize(2);
-    _tft.setTextColor(ILI9341_WHITE);
-    _tft.setCursor(TFT_WIDTH - 30, TFT_HEIGHT - 20);
-    _tft.printf("%.0f", di);
-    prev_di = di;
-  }
+  // if (isFirstDraw || abs(di - prev_di) >= 0.1) {
+  //   _tft.fillRect(TFT_WIDTH - 30, TFT_HEIGHT - 20, 30, 20, ILI9341_BLACK);
+  //   _tft.setTextSize(2);
+  //   _tft.setTextColor(ILI9341_WHITE);
+  //   _tft.setCursor(TFT_WIDTH - 30, TFT_HEIGHT - 20);
+  //   _tft.printf("%.0f", di);
+  //   prev_di = di;
+  // }
 }
 
 float DisplayManager::calculateDI(float temp, float humidity) {
@@ -235,10 +233,165 @@ void DisplayManager::drawElapsedTime(uint32_t last_ble_received) {
     if (isFirstDraw || elapsed_minutes != prev_elapsed_minutes) {
         _tft.setTextSize(OUTDOOR_TEXT_SIZE);
         _tft.setTextColor(ILI9341_CYAN);
-        _tft.fillRect(WEAHTER_SECTION_WIDTH + 50, 10, 70, 15, ILI9341_BLACK);
-        _tft.setCursor(WEAHTER_SECTION_WIDTH + 50, 10);
+        _tft.fillRect(LEFT_WIDTH - 50, 10, 50, 15, ILI9341_BLACK);
+        _tft.setCursor(LEFT_WIDTH - 50, 10);
         _tft.printf("%dm", elapsed_minutes);
         
         prev_elapsed_minutes = elapsed_minutes;
     }
+}
+
+void DisplayManager::drawWeatherSection(const WeatherAPIData& apiData) {
+  if (!apiData.valid) return;
+
+  // 天気コードが変化した場合のみアイコンを更新
+  if (isFirstDraw || apiData.weatherCode != prev_weather_code) {
+    // 天気コードに応じたアイコンを選択
+    const CImage* icon = nullptr;
+    const CImage* icon_s = nullptr;
+    const CImage* icon_t = nullptr;
+    int code = apiData.weatherCode.toInt();
+    uint16_t color_s;
+    uint16_t color_t;
+    // 晴れ系(100番台)の詳細分類
+    if (code >= 100 && code < 200) {
+        if (code == 110 || code == 111) {
+            icon = &image_weather_icon_111;
+            icon_s = &image_weather_icon_111_s;
+            color_s = ILI9341_LIGHTGREY;
+            icon_t = &image_weather_icon_111_t;
+            color_t = ILI9341_LIGHTGREY;
+        } else if (code == 101 || code == 132) {
+            icon = &image_weather_icon_101;
+            icon_s = &image_weather_icon_101_s;
+            color_s = ILI9341_LIGHTGREY;
+        } else if (code == 102 || code == 106 || code == 108 || code == 120 || code == 121) {
+            icon = &image_weather_icon_102;
+            icon_s = &image_weather_icon_102_s;
+            color_s = ILI9341_CYAN;
+        } else if (code == 103 || code == 107 || code == 140) {
+            icon = &image_weather_icon_103;
+            icon_s = &image_weather_icon_103_s;
+            color_s = ILI9341_CYAN;
+        }  else if (code == 104) {
+            icon = &image_weather_icon_104;
+        }  else if (code == 114 || code == 112 || code == 113 || code == 118 || code == 119 || code == 122 || code == 125 || code == 126 || code == 127 || code == 128) {
+            icon = &image_weather_icon_114;
+            icon_s = &image_weather_icon_114_s;
+            color_s = ILI9341_CYAN;
+            icon_t = &image_weather_icon_114_t;
+            color_t = ILI9341_LIGHTGREY;
+        } else if (code == 117) {
+            icon = &image_weather_icon_117;
+        } else {
+            icon = &image_weather_icon_100;
+        }
+    }
+    // 曇り系(200番台)の詳細分類
+    else if (code >= 200 && code < 300) {
+        if (code == 201) {
+            icon = &image_weather_icon_201;
+            icon_s = &image_weather_icon_201_s;
+            color_s = ILI9341_ORANGE;
+        } else if (code == 202 || code == 206 || code == 208 || code == 220 || code == 221) {
+            icon = &image_weather_icon_202;
+            icon_s = &image_weather_icon_202_s;
+            color_s = ILI9341_CYAN;
+        } else if (code == 203 || code == 207 || code == 240) {
+            icon = &image_weather_icon_203;
+            icon_s = &image_weather_icon_203_s;
+            color_s = ILI9341_CYAN;
+        } else if (code == 204) {
+            icon = &image_weather_icon_204;
+        } else if (code == 210 || code == 211) {
+            icon = &image_weather_icon_211;
+            icon_s = &image_weather_icon_211_s;
+            color_s = ILI9341_ORANGE;
+        } else if (code == 212 || code == 213 || code == 214 || code == 218 || code == 219 || code == 222 || code == 224 || code == 225 || code == 226) {
+            icon = &image_weather_icon_214;
+            icon_s = &image_weather_icon_214_s;
+            color_s = ILI9341_CYAN;
+        } else if (code == 217) {
+            icon = &image_weather_icon_217;
+        } else {
+            icon = &image_weather_icon_200;
+        }
+    }
+    // 雨系(300番台)の詳細分類
+    else if (code >= 300 && code < 400) {
+        if (code == 301) {
+            icon = &image_weather_icon_301;
+            icon_s = &image_weather_icon_301_s;
+            color_s = ILI9341_ORANGE;
+        } else if (code == 302) {
+            icon = &image_weather_icon_302;
+            icon_s = &image_weather_icon_301_s;
+            color_s = ILI9341_LIGHTGREY;
+        } else if (code == 303) {
+            icon = &image_weather_icon_303;
+        } else if (code == 306) {
+            icon = &image_weather_icon_306;
+        } else if (code == 311 || code == 316 || code == 320 || code == 323 || code == 324 || code == 325) {
+            icon = &image_weather_icon_311;
+            icon_s = &image_weather_icon_311_s;
+            color_s = ILI9341_ORANGE;
+        } else if (code == 313 || code == 317 || code == 321) {
+            icon = &image_weather_icon_313;
+            icon_s = &image_weather_icon_313_s;
+            color_s = ILI9341_LIGHTGREY;
+            icon_t = &image_weather_icon_313_t;
+            color_t = ILI9341_LIGHTGREY;
+        } else if (code == 315) {
+            icon = &image_weather_icon_315;
+        } else {
+            icon = &image_weather_icon_300;
+        }
+    }
+    // 雪系(400番台)は1アイコンで代用
+    else if (code >= 400 && code < 500) {
+        icon = &image_weather_icon_400;
+    }
+    
+    // アイコンが選択された場合のみ描画
+    if (icon) {
+      _tft.fillRect(WEATHER_ICON_X, WEATHER_ICON_Y, icon->width, icon->height, ILI9341_BLACK);
+      
+      uint16_t color;
+      if (code >= 100 && code < 200) {
+        color = ILI9341_ORANGE;
+      } else if (code >= 200 && code < 300) {
+        color = ILI9341_LIGHTGREY;
+      } else if (code >= 300 && code < 400) {
+        color = ILI9341_CYAN;
+      } else {
+        color = ILI9341_WHITE;
+      }
+      cImage_write(icon, WEATHER_ICON_X, WEATHER_ICON_Y, color);
+
+      if (icon_s) {
+        cImage_writeSlide(icon_s, WEATHER_ICON_X, WEATHER_ICON_Y, color_s, WEATHER_ICON_Y);
+      }
+      if (icon_t) {
+        cImage_writeSlide(icon_t, WEATHER_ICON_X, WEATHER_ICON_Y, color_t, WEATHER_ICON_Y);
+      }
+    }
+
+    prev_weather_code = apiData.weatherCode;
+  }
+
+  // 降水確率が変化した場合のみ更新
+  if (isFirstDraw || 
+      prev_rain_prob_6h != apiData.rain_prob_within_6h || 
+      prev_rain_prob_12h != apiData.rain_prob_within_12h) {
+    _tft.fillRect(RAIN_PROB_X, RAIN_PROB_Y, (TFT_WIDTH - RAIN_PROB_X), 20, ILI9341_BLACK);
+    _tft.setTextSize(2);
+    _tft.setTextColor(ILI9341_WHITE);
+    _tft.setCursor(RAIN_PROB_X, RAIN_PROB_Y);
+    _tft.printf("%d%% -> %d%%", 
+                apiData.rain_prob_within_6h, 
+                apiData.rain_prob_within_12h);
+    
+    prev_rain_prob_6h = apiData.rain_prob_within_6h;
+    prev_rain_prob_12h = apiData.rain_prob_within_12h;
+  }
 }

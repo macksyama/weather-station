@@ -2,14 +2,14 @@
 #include <cstdint> 
 
 // ピン定義
-#define TFT_MISO  GPIO_NUM_5
+//#define TFT_MISO  GPIO_NUM_5
 #define TFT_MOSI  GPIO_NUM_6
 #define TFT_SCK   GPIO_NUM_4
 #define TFT_CS    GPIO_NUM_7
 #define TFT_DC    GPIO_NUM_0
 #define TFT_RST   GPIO_NUM_1
 #define TFT_BL GPIO_NUM_2  // バックライトのピン
-#define PIR_PIN GPIO_NUM_3  // PIRセンサーのピン
+#define PIR_PIN GPIO_NUM_5  // PIRセンサーのピン
 #define SDA_PIN GPIO_NUM_8
 #define SCL_PIN GPIO_NUM_9
 #define AHT20_POWER_PIN GPIO_NUM_10 // AHT20の電源制御用GPIO
@@ -20,8 +20,8 @@
 // 画面レイアウト定数
 #define TFT_WIDTH 320
 #define TFT_HEIGHT 240
-#define LEFT_WIDTH 200
-#define RIGHT_WIDTH 120
+#define LEFT_WIDTH 190
+#define RIGHT_WIDTH 130
 #define SECTION_HEIGHT 120
 
 // 外気温湿度表示用の定数
@@ -39,6 +39,7 @@
 #define SCAN_TIME 10
 
 // スリープ時間（秒）
-const uint32_t SLEEP_DURATION_SEC = 60;
+const uint32_t NORMAL_SLEEP_DURATION_SEC = 60;
+const uint32_t BEACON_SLEEP_DURATION_SEC = 1740;
 // スキャン時間（秒）
 const uint32_t SCAN_DURATION_SEC = 60;
